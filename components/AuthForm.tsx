@@ -46,6 +46,7 @@ import { Input } from "@/components/ui/input"
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';//make sure this is the one from next/navigation not next/router
 
 
 
@@ -64,6 +65,8 @@ import { toast } from 'sonner';
 
 const AuthForm = ({type}:{type: string}) => {//the rendering will be based on whether the type that was sent was sign-in or sign-up
 
+
+    const router = useRouter()//this is the one from next/navigation not next/router
     const formSchema = authFormSchema(type);//using only formSchema name we can use zodResolver.
 
 
@@ -87,9 +90,14 @@ const AuthForm = ({type}:{type: string}) => {//the rendering will be based on wh
     try {
         if(type === 'sign-up'){
             console.log("Sign-up", values)//rendering all the values that we're getting from the form.
-        } else if(type === 'sign-in') {
+
+            toast.success("Account created successfully please sign-in")
+            router.push("/sign-in")
+        } else {
             console.log("Sign-in", values)//this time the values that come to us for being rendered are different as name is not there.
-        }
+            toast.success("Account created successfully please sign-in")
+            router.push("/")//pushing the user to the homepage.
+        }//we didn't use else if for sign-in as, we only have two routes anyways sign-in and up, if user types something else then he'll be redirected to a 404 page.
     } catch (error) {
         console.log(error)
         toast.error(`There was an error: ${error}`)//but to trigger this or any other toast, we have to first render the <toaster /> component in our app's layout that comes from sonner right below the childeren
@@ -131,11 +139,10 @@ const AuthForm = ({type}:{type: string}) => {//the rendering will be based on wh
         <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-6 mt-4 form">
         {/* we were using a formfield component but it took a lot of space so we just turned it into a reusable component. we also modified it so see it there */}
-        <FormField />
             {/* if this is not the signin page only then render the name. */}
-            {!isSignin && (<p>Name</p>)}
-            <p>Email</p>
-            <p>Password</p>
+            {!isSignin && (<FormField control={form.control} name="name" label="Name" placeholder='Your Name' type="text"/>)}{/**instead of statically rendering the name we're rendering formfield that we created. */}
+            <FormField control={form.control} name="email" label="Email" placeholder='Your Email' type="email"/>
+            <FormField control={form.control} name="password" label="Password" placeholder='Your Password' type="password"/> {/**now if you tried to put type as anything other thatn name, password text, file, it'd give an error see the interface we made. */}
 
 
         <Button type="submit">{ isSignin? "Sign-in": "Create an Account"}</Button>

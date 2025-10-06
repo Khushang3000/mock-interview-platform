@@ -26,14 +26,16 @@ const FormField = ({control, name, label, placeholder, type="text"}: FormFieldPr
             control = {control}
             render={({ field }) => (//render is just a callback function in which we can get access to properties of field(that user uses...)
             <FormItem>
-              {/* formLabel has classname label. */}
-              <FormLabel className='label'>Username</FormLabel>
+              {/* formLabel has classname label. till now we were rendering static formfields but now we'll render dynamic in this commit, see authform where we statically rendered text name.*/}
+              <FormLabel className={label}>{label}</FormLabel>
               <FormControl>
-                <Input placeholder="shadcn" {...field} />
+                <Input placeholder={placeholder} className='input' type={type} {...field} />
+                {/* THIS IS HOW WE MADE SHIT DYNAMIC, NOW IN AUTHFORM.TSX WHAT IF WE GO ON ONSUBMIT FUNCTION AND WHAT IF WE SHOWED THE USER A SUCCESS TOAST MESSAGE AS WELL AS REDIRECTED THEM TO ANOTHER PATH THROUGH THE APP ROUTER THAT WE INSTALLED WHILE INITIALIZING THIS PROJECT WITH NEXTJS. */}
               </FormControl>
-              <FormDescription>
+              {/* <FormDescription>
                 This is your public display name.
               </FormDescription>
+              NOT NEEDED. */}
               <FormMessage />
             </FormItem>
           )}
