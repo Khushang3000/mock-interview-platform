@@ -49,7 +49,21 @@ const InterviewCard = ({interviewId, userId, role, type, techstack, createdAt}:I
                         see that function in lib/utils.ts, there we also have a function called getTechLogos, now we can use that utility function in this interviewCard itself but to keep the code clean, we will do it 
                         in another component displaytechicons.tsx
                         now that you're done with that, our home page ui is completed!!!, but we're just using static data rn, what if there was a database?
-                        we're gonna do that in the next commit, using firebase for db!!!  */}
+                        we're gonna do that in the next commit, using firebase for db!!! it is a backend as a service tool offered by google
+                        there are 2 types of sdks that they provide, 
+                        admin sdk-allows secure server side operations
+                        client sdk-enables direct interraction from web or mobile apps
+                            we'll be using both, with server actions and more, with nextjs it comes with edge functions, uses middlewares, auth and much more.
+                        */}
+
+                        {/* go to firebase ->go to console->create a new project(enable gemini as well as google analytics in firebase)->from dashboard of the project(build/authentication)(get started)-> under sign-in method, select email and password provider(native, can use o-auth as well but again, story for another day)->enable email and password and disable email link(story for another day)
+                        ->now go to build/firestore database->create database->standard->leave db id default and location closest to your region->start in production mode->go to project settings(right side of project overview button)->scroll and click on the </>(Web)->add firebase to your app give your app any name(don't select hosting) click next and it'll give you code->npm i firebase->paste the code in firebase/client.ts
+                        ->now click on continue to console->go to project settings/Service Accounts->generate new private key(it downloads a json file)->take 3 values from there(project_id, private key, client email) and paste them in the .env.local file in the root of our app folder and rename those values*/}
+
+                        {/* now we add admin firebase sdk to our server. read about it in firebase/documentation/admin sdk/fundamentals it basically let's us interact with the firebase db, manage auth generate token and shi
+                        read docs...
+                        now here, npm i firebase-admin --save
+                        now create a admin.ts file in firebase folder */}
                     </Link>
                 </Button>
             </div>
