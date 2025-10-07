@@ -30,7 +30,8 @@ const FormField = ({control, name, label, placeholder, type="text"}: FormFieldPr
               <FormLabel className={label}>{label}</FormLabel>
               <FormControl>
                 <Input placeholder={placeholder} className='input' type={type} {...field} />
-                {/* THIS IS HOW WE MADE SHIT DYNAMIC, NOW IN AUTHFORM.TSX WHAT IF WE GO ON ONSUBMIT FUNCTION AND WHAT IF WE SHOWED THE USER A SUCCESS TOAST MESSAGE AS WELL AS REDIRECTED THEM TO ANOTHER PATH THROUGH THE APP ROUTER THAT WE INSTALLED WHILE INITIALIZING THIS PROJECT WITH NEXTJS. */}
+                {/* THIS IS HOW WE MADE SHIT DYNAMIC, NOW IN AUTHFORM.TSX WHAT IF WE GO ON ONSUBMIT FUNCTION AND WHAT IF WE SHOWED THE USER A SUCCESS TOAST MESSAGE AS WELL AS REDIRECTED THEM TO ANOTHER PATH THROUGH THE APP ROUTER THAT WE INSTALLED WHILE INITIALIZING THIS PROJECT WITH NEXTJS.
+                now, we'll design our home page, but before that we gotta do navbar which is just a simple logo, and it'll only show up in the non-auth pages btw, so go to root's layout. */}
               </FormControl>
               {/* <FormDescription>
                 This is your public display name.

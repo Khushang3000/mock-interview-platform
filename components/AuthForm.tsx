@@ -95,7 +95,7 @@ const AuthForm = ({type}:{type: string}) => {//the rendering will be based on wh
             router.push("/sign-in")
         } else {
             console.log("Sign-in", values)//this time the values that come to us for being rendered are different as name is not there.
-            toast.success("Account created successfully please sign-in")
+            toast.success("Logged in successfully.")
             router.push("/")//pushing the user to the homepage.
         }//we didn't use else if for sign-in as, we only have two routes anyways sign-in and up, if user types something else then he'll be redirected to a 404 page.
     } catch (error) {
@@ -105,7 +105,7 @@ const AuthForm = ({type}:{type: string}) => {//the rendering will be based on wh
 
     }
 
-
+    //this is a very terrible auth yes cuz we ain't verifying the user through db so we'll do it later.
 
 
 
