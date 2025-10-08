@@ -10,6 +10,7 @@ const RootLayout = async ({children}:{children: ReactNode}) => {
   //we also wanna do something similar to this in auth's layout, there we wanna check if user is authenticated, if yes then directly redirect them to the / (home) page so that they don't have to login again.
   //now the next thing that we wanna do is the generateInterview interface, tho it's not a form that user's would fill in but it is gonna be implemented through a voice interface.
   //we'll do that in the next commit
+  //interview folder
 
   return (
     <div className='root-layout'>
