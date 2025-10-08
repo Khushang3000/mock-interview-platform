@@ -1,6 +1,11 @@
 import React, { ReactNode } from 'react'
+import { isAuthenticated } from '@/lib/actions/auth.action';
+import { redirect } from 'next/navigation';
 
-const AuthLayout = ({children}:{children: ReactNode}) => {
+
+const AuthLayout =async ({children}:{children: ReactNode}) => {
+  const isUserAuthenticated = await isAuthenticated();
+    if(isUserAuthenticated) redirect('/');//redirect to homepage if user is authenticated
   return (
     //you can check auth-layout in globals.css,
     //now we gotta Install some shadcn components like form button inputs so that we can create our authForm

@@ -33,3 +33,8 @@ export const db = getFirestore(app)
 //anyways we're initializing both and we're giving acces to both auth and db functionalities so we can use them later on.
 //read more about these in the docs...
 //now the next thing we'll do is hook these functionalities with the auth ui's that we've created to make them actually functional
+//firebase allows us to login or signup with email and password or even O-auth(google or github and more)
+//see the idea_app folder ss1 to see the full auth flow.
+
+
+// create actions folder in lib, and create auth.action.ts

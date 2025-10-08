@@ -47,7 +47,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';//make sure this is the one from next/navigation not next/router
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/firebase/client';
 
+import { signIn, signUp } from '@/lib/actions/auth.action';
 
 
 
@@ -81,22 +84,64 @@ const AuthForm = ({type}:{type: string}) => {//the rendering will be based on wh
   })
  
   // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values)
+  async function onSubmit(values: z.infer<typeof formSchema>) {
 
     //the thing that we want to do. a db call like signing the user and logging in the user.
     try {
         if(type === 'sign-up'){
-            console.log("Sign-up", values)//rendering all the values that we're getting from the form.
 
+            const {name, email, password} = values;//DESTRUCTURING VALUES FROM FORM.
+            const userCredentials = await createUserWithEmailAndPassword(auth, email, password)//This registers a user in firebase AUTHENTICATION, NOT FIREBASE DATABASE, this function is provided with firebase/client
+            
+            const result = await signUp({
+              uid: userCredentials.user.uid,
+              name: name!,//to make typescript shut up
+              email: email,
+              password: password
+            })
+            
+            if(!result?.success){
+              toast.error(result?.message)
+              return 
+            }
+            
+            
+            
             toast.success("Account created successfully please sign-in")
-            router.push("/sign-in")
-        } else {
-            console.log("Sign-in", values)//this time the values that come to us for being rendered are different as name is not there.
-            toast.success("Logged in successfully.")
-            router.push("/")//pushing the user to the homepage.
+            router.push("/sign-in")//after they've registered successfully we'll redirect user to firebase's sign-in so that they can now sign-in.
+            //this method will now generate a token which we'll send to the server side and set a cookie.
+
+
+        } else {//signin route
+          const {email, password} = values;
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);//this will give us the userCredetials which we can use to create a short lived authentication token 
+
+          const idToken = await userCredential.user.getIdToken();//and then we can check
+
+          if(!idToken){
+            toast.error("Sign-in failed")
+            return;
+          }
+
+          //if the token was created then we pass it to the signIn function which will make a session cookie out of it.
+          await signIn({email, idToken});
+          //below part is for success, now we could have done all the work on the Client side, but it is less secure, see how we were using client side sdk(auth) in this authform
+          //and admin side sdk in server actions
+          //we can also perform server side checks like checking for roles or permissions.
+          //and it's difficult to manage sessions on client, as tokens expire and require you to refresh them on the client side and that ain't ssr friendly
+          //also make sure when you copy the environment variables from somewhere, you have to check that they are correct and don't include anything else except the value.
+          //your firebase privatekey had an extra , at the end. so make sure to remove them.
+
+          //now the 2nd thing is we're importing createUserwithEmail.. and signInUserwithEmail.. from @firebase/auth(firebase folder in root directory of our app), while we need it from firebase/auth(node modules)
+          //now you can actually sign-up to create a user and sign-in and test both of those routes, we haven't yet made the home page auth secure tho.
+          //just check those 2, now after creating the user go to firebase. project overview. authentication, you'll see the user.
+          //and now let's protect the routes by checking if the user exists or not.
+          //auth.actions.ts->getCurrentUser
+
+
+          // console.log("Sign-in", values)//this time the values that come to us for being rendered are different as name is not there.
+          toast.success("Logged in successfully.")
+          router.push("/")//pushing the user to the homepage.
         }//we didn't use else if for sign-in as, we only have two routes anyways sign-in and up, if user types something else then he'll be redirected to a 404 page.
     } catch (error) {
         console.log(error)
