@@ -63,6 +63,14 @@ export async function POST(request: Request){
         //for that go to next.config.ts and under config options:
         //eslint: {ignoreDuringBuilds: true},
         //typescript: {ignoreBuildErrors: true}
+
+        //now we'll be working on the most important functionality of this project.
+        //setting up our ai agent workflow. and we'll be using workflow method btw. and instead of the gather node, we'll use the first conversational node and in that we're gonna extract the variables.
+        //once you've made the workflow, you can copy that workflow, head over to the env and add that.
+        //now go to root/interview page, where we wanna pass the user information to the Agent.
+        //and while making the api request through api node, send values like normal, role, type..., and to put their values, use {{role}}, {{type}}, which the variables which were extracted by the startNode.
+        //you can see the entire workflow in the screenshot 2.
+        
     } catch (error) {
         console.error(error);
         return Response.json({success: false, error: error}, {status: 500})
