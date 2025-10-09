@@ -64,7 +64,20 @@ const Agent = ({userName}: AgentProps) => {
     //i.e the code will look the same for whichever provider you choose let it be chatgpt or gemini or anyone else.
     //in this case we have choosen gemini generative ai.
     //so let's install that ai sdk: npm i ai @ai-sdk/google, and with that we're ready to use gemini.
-  )
+
+    // Now we have our gemini api key(the ai assistant), but for our application we need it to speak, and to do that we'll use vapi
+    // now we can use vapi in two ways:
+    
+    // Assistants are the new standard: The Assistant builder is the primary, recommended way to create voice agents on Vapi for almost all new projects. It's designed to be a single, powerful, conversational agent.
+
+    // Workflows are a legacy/specialized feature: The Workflow builder is an older system designed for creating very rigid, multi-step, deterministic call flows (like a visual phone tree). Vapi's own documentation now states: "We no longer recommend Workflows for new builds. Use Assistants for most cases..."
+        
+    //go to docs and read the assistants section as well as the workflows section and see the quickstart sections there.
+    //but firstly let's get the vapi api in our app for interacting with the real time call functionality of vapi:npm i @vapi-ai/web
+    //now head over to vapi dashboard->api keys->public api key. and add the env variable.
+
+    //NOW WE set up our vapi client in this app. lib/vapi.sdk.ts
+)
 }
 
 export default Agent
