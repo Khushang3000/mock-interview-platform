@@ -1,6 +1,13 @@
+"use client";//as the agent will be used on the client side.
+
 import Image from 'next/image'
 import React from 'react'
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import {useState, useEffect} from 'react';
+import { vapi } from '@/lib/vapi.sdk';
+
+
 
 enum CallStatus {//this will allow us to define multiple values.
     INACTIVE='INACTIVE',
@@ -8,12 +15,135 @@ enum CallStatus {//this will allow us to define multiple values.
     ACTIVE='ACTIVE',
     FINISHED='FINISHED'
 }
+// ##########################################FINAL PART OF THIS PAGE################################################################
+interface SavedMessage {
+    //creating the savedMessage interface so that we can ensure typesafety in the messages array later when they'll be managed as a state.
+    role: "user"|"system"|"assistant";
+    content: string;
+}
 
-const Agent = ({userName}: AgentProps) => {
-    const isSpeaking = true;//true->we are speaking, false->ai agent is speaking
-    const callStatus = CallStatus.ACTIVE;
-    const messages = ["What is Your Name? ","My name is John Doe, Nice to Meet you"];
-    const lastMessage = messages[messages.length-1];
+const Agent = ({userName, userId, type}: AgentProps) => {//added the userId and type that agent component is going to recieve. now we implement it's functionality.
+
+    const router = useRouter();//now there will be many states and useEffects to handle the different states of the call that we have.
+    //so let's make them, instead of using the static variables.
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE)
+
+    //also let's make a list for messages as we won't be having static messages.
+    const [messages, setMessages] = useState<SavedMessage[]>([]);
+
+    //hooking into vapi's functionalities.
+    useEffect(() => {
+        const onCallStart = ()=>setCallStatus(CallStatus.ACTIVE)//as soon as the call starts(not as soon as the page mounts up) we set the callstatus to active
+        const onCallEnd = ()=>setCallStatus(CallStatus.INACTIVE)//as soon as the call ends we set callstatus to inactive.
+
+        const onMessage = (message: Message)=>{
+            if(message.type === "transcript" && message.transcriptType === "final"){
+                //if message type and transcript type is final that means that we can save it somewhere.
+                const newMessage = {role: message.role, content: message.transcript}
+
+                //adding that message to the array of messages.
+                setMessages((prev)=>[...prev, newMessage]);
+
+
+            }
+        };//so that's what happens onMessage.
+
+        const onSpeechStart = ()=>setIsSpeaking(true);
+        const onSpeechEnd = ()=>setIsSpeaking(false);
+    
+        const onError = (error: Error)=>console.log('Error: ',error);
+
+        //now we have all the functions that decide what happens at different stages of the call. we can now forward them over to vapi.
+        //you can think of them as vapi event listeners.
+
+        vapi.on('call-start',onCallStart);//on call start from vapi, we call our app's onCallStart function.
+        vapi.on('call-end',onCallEnd);//similar to callStart.
+        vapi.on('message', onMessage);
+        vapi.on('speech-start', onSpeechStart);
+        vapi.on('speech-end', onSpeechEnd);
+        vapi.on('error', onError);
+        //these all are just events from vapi that we blend our app with.
+        //but there's one thing, whenever you open up listeners in useEffect, you also have to clear them.
+
+        //when the page is unmounted this return statement is called where we turn off the event listeners, so that they don't slow our app any further if we're not using it.
+        return () => {//notice how we're returning a callback function.
+        vapi.off('call-start',onCallStart);
+        vapi.off('call-end',onCallEnd);
+        vapi.off('message', onMessage);
+        vapi.off('speech-start', onSpeechStart);
+        vapi.off('speech-end', onSpeechEnd);
+        vapi.off('error', onError);
+        }
+
+    }, [])
+    
+    //now we also have a useEffect for whenever anything changes.
+    useEffect(() => {
+      
+    
+      return () => {
+        if(callStatus === CallStatus.FINISHED) router.push('/');//if the callStatus is finished(i.e the call has ended), i wanna push user back to the homepage.
+        //we can also make them go to the interviews/id page, but it'll take some time to be added, so it's better that we just send them back to the homepage and from there they figure out where they wanna go.
+
+
+      }
+    }, [messages, callStatus, type, userId])
+    //finally, we have to implement two functions
+
+    //this will start the call so it'll be an async function.
+    const handleCall = async ()=>{
+        setCallStatus(CallStatus.CONNECTING);
+        
+        // now we can call vapi and actually ask it to start the call.
+
+        //the reason we're passing undefined is because when you hover over the .start function you see:
+        // start(
+        //   assistant?: CreateAssistantDTO | string,
+        //   assistantOverrides?: AssistantOverrides,
+        //   squad?: CreateSquadDTO | string,
+        //   workflow?: CreateWorkflowDTO | string,
+        //   workflowOverrides?: WorkflowOverrides
+        // )
+
+        //which means that if you passed the public vapi workflow id as the 1st 2nd or 3rd argument, it will think of it as assistant, assistant override
+        //or squad, which we definitely don't want!!! and why did only passing undefined work? and why not ''(empty string) or null?
+        
+        // | What you passed | Type                                                    | SDK sees it as                                                    | Result  |
+        // | --------------- | ------------------------------------------------------- | ---------------------------------------------------------------   | ------- |
+        // | `undefined`     | *undefined*                                             | ❌ falsy → skip assistant → checks workflow ✅                   | works ✅ |
+        // | `null`          | object (but truthy in TS sense since explicitly passed) | “assistant exists but is null” ❌                                | fails   |
+        // | `''`            | string (empty)                                          | truthy string value (non-undefined) → treated as assistant ID ❌ | fails   |
+
+        // so basically when we passed null or '' it considered them as values for those parameters.
+        //that's how the vapi sdk was designed...
+        //oh and basically when you tried to make request before, by passing workflowid as the first variable.
+        //you had this logged in the browser, see the ss3.
+        //so you even got the context from there.
+        //which totally indicated that the start function was taking your key as the assistant id. as it came to be true.
+
+        //now that was some real dev work now...
+        //now if you gave the interview, and you visited the firebase, you must've seen the interview being created.
+        await vapi.start(undefined, undefined, undefined, process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID,{
+            variableValues: {//remember that we were using the userid variable in the workflow.
+                userid: userId,
+            }
+        });
+        //so basically, we're telling it to start the convo with this specific agent or workflow.
+    }//so this is how simply we're handling the start of the call.
+
+    //this will disconnect the call, so it'll also be an async function.
+    const handleDisconnect = async ()=>{
+        setCallStatus(CallStatus.FINISHED);
+        vapi.stop();
+    }//and that's how we handle disconnect.
+    
+    const latestMessage = messages[messages.length - 1]?.content; //check out how many messages there are and just give me it's content.
+    const isCallInactiveOrFinished = (callStatus === CallStatus.INACTIVE || CallStatus.FINISHED);
+
+    //Okay, designing the interview is one thing, but giving the interview is what remains to be done, so let's do that in the next commit.
+
+// ################################################################FINAL PART OF THIS PAGE HAS ENDED##################################################################
 
   return (
     <>
@@ -35,24 +165,24 @@ const Agent = ({userName}: AgentProps) => {
     {messages.length>0 && (
         <div className="transcript-border">
             <div className="transcript">
-                <p key={lastMessage} className={cn('transition-opacity duration-500 opacity-0','animate-fadeIn opacity-100')}>{lastMessage}</p>
+                <p key={latestMessage} className={cn('transition-opacity duration-500 opacity-0','animate-fadeIn opacity-100')}>{latestMessage}</p>
             </div>
         </div>
     )}
     <div className="w-full flex justify-center">
         {/**Here we have to deal with call status, every call has a status that we have to define. */}
         {callStatus !== 'ACTIVE' ? //IF STATUS IS NOT ACTIVE
-        (<button className='relative btn-call'>
+        (<button className='relative btn-call' onClick={handleCall}>
             {/* this button will allow us to commence the call */}
             <span className={cn(`absolute rounded-full opacity-75`, callStatus !== 'CONNECTING' && 'hidden')}/>
                 {/* in the cn function, if the callStatus is not Connecting only then we'll give it a className 'hidden' */}
             <span>
                 {/**if the status is inactive or finished then show "Call" otherwise it's running so show ... */}
-                {callStatus === 'INACTIVE' || callStatus === 'FINISHED' ? 'Call': '...'}
+                {isCallInactiveOrFinished ? 'Call': '...'}
             </span>
         </button>)
         : //IF STATUS IS NOT ACTIVE
-        <button className='btn-disconnect'>End</button>
+        <button className='btn-disconnect' onClick={handleDisconnect}>End</button>
         }
     </div>
     </>
