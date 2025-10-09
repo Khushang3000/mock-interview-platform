@@ -56,6 +56,14 @@ const Agent = ({userName}: AgentProps) => {
         }
     </div>
     </>
+    //now we're gonna make a feature which is the ability to generate custom interviews using an ai assistant
+    //the way this works is that we get the user choices from ai in our app and then feed it to an assistant like gemini, to generate proper interview questions.
+    //so create an api key for gemini in google ai studio. get api key->create a new project->create api key.
+    //copy the api key and paste it in env.local, and gemini api key is free btw.
+    //now how do we use that? we can use the ai sdk provided by vercel.(read docs) it allows you to integrate any kind of llm into your application without depending the specific provider you use.
+    //i.e the code will look the same for whichever provider you choose let it be chatgpt or gemini or anyone else.
+    //in this case we have choosen gemini generative ai.
+    //so let's install that ai sdk: npm i ai @ai-sdk/google, and with that we're ready to use gemini.
   )
 }
 

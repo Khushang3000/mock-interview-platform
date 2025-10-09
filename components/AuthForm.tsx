@@ -150,7 +150,6 @@ const AuthForm = ({type}:{type: string}) => {//the rendering will be based on wh
 
     }
 
-    //this is a very terrible auth yes cuz we ain't verifying the user through db so we'll do it later.
 
 
 
