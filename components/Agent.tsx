@@ -1,4 +1,4 @@
-"use client";//as the agent will be used on the client side.
+"use client"//as the agent will be used on the client side.
 
 import Image from 'next/image'
 import React from 'react'
@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import {useState, useEffect} from 'react';
 import { vapi } from '@/lib/vapi.sdk';
 import { interviewer } from '@/constants';
-import { createFeedback } from '@/lib/actions/general.actions';
+// import { createFeedback } from '@/lib/actions/general.actions';
 
 
 enum CallStatus {//this will allow us to define multiple values.
@@ -91,11 +91,33 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
         // }
 
         // DONE:
-        const {success, feedbackId: id} = await createFeedback({//using await cuz this createFeedback is handling db., and renaming feedbackId to id.
-            interviewId: interviewId!,
-            userId: userId!,
-            transcript: messages
+        // const {success, feedbackId: id} = await createFeedback({//using await cuz this createFeedback is handling db., and renaming feedbackId to id. 
+        // interviewId: interviewId!,
+        // userId: userId!, 
+        // transcript: messages })
+        //basically, we were doing the above shit earlier, but in the createFeedback function we're importing db from firebase admin,
+        //and it uses firebase admin sdk, which internally imports google-auth-library. and it uses node core modules like child_process,
+        //so what happened was: Hey, you’re trying to import a Node.js-only module (child_process), but I’m bundling for the browser — I can’t do that.
+        //and that can only be called from the server component, but when we imported that, it also imports google-auth library, which uses child_process which is specific to node.
+        //and now when we imported the createFeedback function here in agent.tsx and called it, it meant that we made a req to firebase admin through a client component...
+        //which it could not allow as it can only be called from the server(not server component(which only renders on the server))
+        //and that's why we had to create a new api route for feedback, and we're calling that api route, and that route will then call the createFeedback function.
+        // you can’t just slap 'use server' on a function and call it from a client component; the bundler still sees the import chain.
+        //and server component only means that it renders on the server, but calling will be done on client's browser only,
+        //that's why the api folder is there, to make server files and call db functions...
+
+        //oh and you can see the exact error in the ss4, the last 4 lines told us which folders to look for the problem.
+        try{
+        const res = await fetch('/api/feedback', {//the real createFeedback is called by the server file. api/feedback/route.ts
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+        interviewId,
+        userId,
+        transcript: messages,
+        }),
         })
+        const {success, feedbackId: id} = await res.json();
 
 
         if(success && id){//if success is true and id exists.   
@@ -105,6 +127,12 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
             console.log("Error saving feedback")
             router.push('/')//if there is an error then push them back to the home page.
         }
+    } catch(error){
+        console.error(error);
+    }
+    //now our app is done, for almost every part, unless you ever wanna change the ui, so yeah... this is the last commit.
+    
+
     }
     //now we also have a useEffect for whenever anything changes.
     useEffect(() => {

@@ -6,10 +6,11 @@ import Image from 'next/image';
 import { Button } from './ui/button';
 import Link from 'next/link';
 import DisplayTechIcons from './DisplayTechIcons';
+import { getFeedbackByInterviewId } from '@/lib/actions/general.actions';
 
-const InterviewCard = ({id, userId, role, type, techstack, createdAt}:InterviewCardProps) => {
+const InterviewCard = async ({id, userId, role, type, techstack, createdAt}:InterviewCardProps) => {
 
-    const feedback = null as Feedback | null; //feedback is set to null.
+    const feedback = null as Feedback| null ;// if the interview's id and user's id exist, then getfeedback by user's id, otherwise return null which will display "You haven't taken any interviews yet" line.
     const normalizedType = /mix/gi.test(type) ? 'Mixed' : type;//gi, g is global and i is case insensitive.
     const formattedDate = dayjs(feedback?.createdAt|| createdAt || Date.now()).format('MMM D, YYYY')//formatting is like sep/feb/oct date, 2005/2006/2007 or anything.
   return (
@@ -39,10 +40,10 @@ const InterviewCard = ({id, userId, role, type, techstack, createdAt}:InterviewC
                 <DisplayTechIcons techStack={techstack}/>
                 <Button className='btn-primary'>
                     <Link href={feedback ? 
-                        `/interview/${id}/feedback`//feedback
+                        `/interview/${id}/feedback`
                         :
-                        `/interview/${id}`//if it doesn't exist then we redirect user to a page from where they can take the interview
-                    }>
+                        `/interview/${id}`}//if it doesn't exist then we redirect user to a page from where they can take the interview
+                    >
                         {feedback? "Check Feedback":"View Interview"}
                         {/* if feedback exists for them then check feedback, otherwise view interview is displayed on the button
                         now we will render the skills' icons based on what the techstack array in the interview interface stored, and through those values in the techstack array, we'll map over the mappings to get the correct icon of the respective skill

@@ -1,5 +1,4 @@
 import { getInterviewById } from '@/lib/actions/general.actions';
-import React from 'react'
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import { getRandomInterviewCover } from '@/lib/utils';

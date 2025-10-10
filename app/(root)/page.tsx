@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import React from 'react'
@@ -38,7 +39,7 @@ const page = async () => {
   //so we need to create a new page, (root)->interview->[id] we'll be creating a dynamic route here.
   //and we'll create a function that will return interview details, but before that, we should actually create a general.actions.ts and then
   //and put getinterviewbyuserid and getlatestinterview there. and there we'll create a function that will help us fetch the interview details.
-  
+
 
   return (
     <>
