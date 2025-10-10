@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import {useState, useEffect} from 'react';
 import { vapi } from '@/lib/vapi.sdk';
 import { interviewer } from '@/constants';
+import { createFeedback } from '@/lib/actions/general.actions';
 
 
 enum CallStatus {//this will allow us to define multiple values.
@@ -82,15 +83,23 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
         console.log("Generate Feedback Here");
 
         // TODO: generate a server action that generates a feedback.
-        const {success, id} = {//we'll get the success and id from an action where we'll actually generate that feedback.
-            //but for now we'll just take a dummy example.
-            success: true,
-            id: 'feedback-id'
-            //just so that we can make s check down below
-        }
+        // const {success, id} = {//we'll get the success and id from an action where we'll actually generate that feedback.
+        //     //but for now we'll just take a dummy example.
+        //     success: true,
+        //     id: 'feedback-id'
+        //     //just so that we can make s check down below
+        // }
+
+        // DONE:
+        const {success, feedbackId: id} = await createFeedback({//using await cuz this createFeedback is handling db., and renaming feedbackId to id.
+            interviewId: interviewId!,
+            userId: userId!,
+            transcript: messages
+        })
+
 
         if(success && id){//if success is true and id exists.   
-            router.push(`/interview/${interviewId}`)
+            router.push(`/interview/${interviewId}/feedback`)
         } else {
             //if it's not a success, we can log an error.
             console.log("Error saving feedback")
@@ -113,6 +122,11 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
         // if(callStatus === CallStatus.FINISHED) router.push('/');//if the callStatus is finished(i.e the call has ended), i wanna push user back to the homepage.
         //we can also make them go to the interviews/id page, but it'll take some time to be added, so it's better that we just send them back to the homepage and from there they figure out where they wanna go.
         //now we'll handle the feedback in next commit.
+        //Oh and btw... router.push() used in client components or event handlers.
+        //redirect(from next/navigation) we use it inside server components, actions or loaders.
+        //so now finally we'll create the feedback page and show the feedback to the user.
+        //lib/actions/generalactions and there we'll create a server action that'll create feedback and store it in our firestore database using gemini
+        //createFeedback function.
       
     }, [messages, callStatus, type, userId])
     //finally, we have to implement two functions
@@ -178,7 +192,7 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
                 //and you can just directly paste it or update your interviewer json with that one, but make sure to handle the inputs and variables.
                 variableValues: {
                     questions: formattedQuestions
-                }
+                }//oh and btw in this way we didn't need to host or publish our own assistant again.
             })
             
         }
