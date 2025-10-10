@@ -142,7 +142,11 @@ const Agent = ({userName, userId, type}: AgentProps) => {//added the userId and 
     const isCallInactiveOrFinished = (callStatus === CallStatus.INACTIVE || CallStatus.FINISHED);
 
     //Okay, designing the interview is one thing, but giving the interview is what remains to be done, so let's do that in the next commit.
-
+    //oh and btw you might've noticed that we're using the public key for web workflow as we're doing shit on client side, 
+    //as private keys are used to interact with vapi api in the backend of the systems,
+    //and the public key is used to interact with vapi api in the client side, that's why we even named our workflow id with NEXT_PUBLIC so that it can be accessed on the frontend side.
+    //so now the next thing w gotta do is -> showing the generated interview. to show the newly generated interview on the homepage, we gotta make an action that fetches that interview.
+    //so in lib/auth.actions.ts we can write a simple function that simply fetches the interview 
 // ################################################################FINAL PART OF THIS PAGE HAS ENDED##################################################################
 
   return (
