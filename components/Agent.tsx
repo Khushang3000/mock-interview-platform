@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import {useState, useEffect} from 'react';
 import { vapi } from '@/lib/vapi.sdk';
-
+import { interviewer } from '@/constants';
 
 
 enum CallStatus {//this will allow us to define multiple values.
@@ -22,7 +22,7 @@ interface SavedMessage {
     content: string;
 }
 
-const Agent = ({userName, userId, type}: AgentProps) => {//added the userId and type that agent component is going to recieve. now we implement it's functionality.
+const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => {//added the userId and type that agent component is going to recieve. now we implement it's functionality.
 
     const router = useRouter();//now there will be many states and useEffects to handle the different states of the call that we have.
     //so let's make them, instead of using the static variables.
@@ -78,16 +78,42 @@ const Agent = ({userName, userId, type}: AgentProps) => {//added the userId and 
 
     }, [])
     
+    const handleGenerateFeedback = async (messages: SavedMessage[]) => {//recieves a list of saved messages. cuz it has to take a transcript to generate feedback based on the entire conversation.
+        console.log("Generate Feedback Here");
+
+        // TODO: generate a server action that generates a feedback.
+        const {success, id} = {//we'll get the success and id from an action where we'll actually generate that feedback.
+            //but for now we'll just take a dummy example.
+            success: true,
+            id: 'feedback-id'
+            //just so that we can make s check down below
+        }
+
+        if(success && id){//if success is true and id exists.   
+            router.push(`/interview/${interviewId}`)
+        } else {
+            //if it's not a success, we can log an error.
+            console.log("Error saving feedback")
+            router.push('/')//if there is an error then push them back to the home page.
+        }
+    }
     //now we also have a useEffect for whenever anything changes.
     useEffect(() => {
+        //HERE we will check whether we're on a call to generate an interview or we're on a call right now.
+        if(callStatus === CallStatus.FINISHED){
+            if(type==='generate'){
+                //if the type is generate then sure we'll push to the homepage right after we generate an interview
+                router.push('/');
+            } else {
+                handleGenerateFeedback(messages);//see this is for feedback.
+                //but for now let's go and focus on handling this interview call, in the handleCall
+            }
+        }
       
-    
-      return () => {
-        if(callStatus === CallStatus.FINISHED) router.push('/');//if the callStatus is finished(i.e the call has ended), i wanna push user back to the homepage.
+        // if(callStatus === CallStatus.FINISHED) router.push('/');//if the callStatus is finished(i.e the call has ended), i wanna push user back to the homepage.
         //we can also make them go to the interviews/id page, but it'll take some time to be added, so it's better that we just send them back to the homepage and from there they figure out where they wanna go.
-
-
-      }
+        //now we'll handle the feedback in next commit.
+      
     }, [messages, callStatus, type, userId])
     //finally, we have to implement two functions
 
@@ -124,12 +150,38 @@ const Agent = ({userName, userId, type}: AgentProps) => {//added the userId and 
 
         //now that was some real dev work now...
         //now if you gave the interview, and you visited the firebase, you must've seen the interview being created.
+        // await vapi.start(undefined, undefined, undefined, process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID,{
+        //     variableValues: {//remember that we were using the userid variable in the workflow.
+        //         userid: userId,
+        //     }
+        // });
+        //so basically, we're telling it to start the convo with this specific agent or workflow.
+
+        if(type === 'generate'){//if type is equal to generate, we generate an interview.
         await vapi.start(undefined, undefined, undefined, process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID,{
             variableValues: {//remember that we were using the userid variable in the workflow.
                 userid: userId,
             }
         });
-        //so basically, we're telling it to start the convo with this specific agent or workflow.
+        } else {
+            //else means that type will be interview, hence this will be an interview call.
+            //so we'll provide a n.o of questions for an interviewer to ask.
+            let formattedQuestions = '';
+            if(questions) {
+                formattedQuestions = questions.map((question)=>`- ${question}`).join('\n')//if questions do exist then, just map over them and join each of them with a newline character to make it formatted questions
+
+            }
+            //now our index.ts file under constants, uncomment all, as we're now ready to use it.
+            await vapi.start(interviewer, {//if you see the interviewer, he's a different interviewer than the one we used to generate the interview, this one will ask the questions.
+                //now go and look at the configuration of this interviewer in the documentation.
+                //also, if you want to generate a specific configuration, then you have to go to vapi, agent and publish the agent that you want to, and then click the </> code button and it'll give you the assistant's config in json.
+                //and you can just directly paste it or update your interviewer json with that one, but make sure to handle the inputs and variables.
+                variableValues: {
+                    questions: formattedQuestions
+                }
+            })
+            
+        }
     }//so this is how simply we're handling the start of the call.
 
     //this will disconnect the call, so it'll also be an async function.

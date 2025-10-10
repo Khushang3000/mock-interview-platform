@@ -4,8 +4,8 @@ import React from 'react'
 import Image from 'next/image'
 import { dummyInterviews } from '@/constants'
 import InterviewCard from '@/components/InterviewCard'
-import { getCurrentUser, getInterviewsByUserId, getLatestInterviews } from '@/lib/actions/auth.action'
-
+import { getCurrentUser} from '@/lib/actions/auth.action'
+import { getInterviewsByUserId, getLatestInterviews} from '@/lib/actions/general.actions';
 
 
 const page = async () => {
@@ -34,8 +34,11 @@ const page = async () => {
   //now with this in mind we'll display the real interview data.
   //see the your interviews section.
 
-  //now after you've seen everything, in the next commit we'll work on the interview session.
-
+  //now after you've seen everything, in the next commit we'll work on the interview session. yk for the actual interview.
+  //so we need to create a new page, (root)->interview->[id] we'll be creating a dynamic route here.
+  //and we'll create a function that will return interview details, but before that, we should actually create a general.actions.ts and then
+  //and put getinterviewbyuserid and getlatestinterview there. and there we'll create a function that will help us fetch the interview details.
+  
 
   return (
     <>

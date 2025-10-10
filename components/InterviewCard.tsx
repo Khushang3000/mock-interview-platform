@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 import Link from 'next/link';
 import DisplayTechIcons from './DisplayTechIcons';
 
-const InterviewCard = ({interviewId, userId, role, type, techstack, createdAt}:InterviewCardProps) => {
+const InterviewCard = ({id, userId, role, type, techstack, createdAt}:InterviewCardProps) => {
 
     const feedback = null as Feedback | null; //feedback is set to null.
     const normalizedType = /mix/gi.test(type) ? 'Mixed' : type;//gi, g is global and i is case insensitive.
@@ -39,9 +39,9 @@ const InterviewCard = ({interviewId, userId, role, type, techstack, createdAt}:I
                 <DisplayTechIcons techStack={techstack}/>
                 <Button className='btn-primary'>
                     <Link href={feedback ? 
-                        `/interview/${interviewId}/feedback`//feedback
+                        `/interview/${id}/feedback`//feedback
                         :
-                        `/interview/${interviewId}`//if it doesn't exist then we redirect user to a page from where they can take the interview
+                        `/interview/${id}`//if it doesn't exist then we redirect user to a page from where they can take the interview
                     }>
                         {feedback? "Check Feedback":"View Interview"}
                         {/* if feedback exists for them then check feedback, otherwise view interview is displayed on the button
