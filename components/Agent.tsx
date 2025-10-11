@@ -153,6 +153,7 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
         // we could've made only the function server only by giving the first line in it's block/scope as 'use server';
         //but since we're importing db from firebase/admin in the entire file, so the entire file needs to go server only... as it's a node-only module
         //that's why our whole general.actions.ts goes as 'use server' module.
+        //also make sure that you add the workflow id as an environment variable in the prod env, while deploying.
     }
 
 
