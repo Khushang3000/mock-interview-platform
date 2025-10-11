@@ -148,8 +148,11 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
             router.push('/')//if there is an error then push them back to the home page.
         }
     
-        // using "use server" means "Hey, never even try to bundle this for the browser. This is server-only code."
+        // using "use server" means "Hey, never even try to bundle this for the browser. This is server-only code.", if i don't use 'use server' in an action module and then call it from a client(browser component) then it get's bundled to the browser
         // and we're using that in useEffect so i don't think that's a problem as the component isn't server rendered and if it were then i would have had to use formAction
+        // we could've made only the function server only by giving the first line in it's block/scope as 'use server';
+        //but since we're importing db from firebase/admin in the entire file, so the entire file needs to go server only... as it's a node-only module
+        //that's why our whole general.actions.ts goes as 'use server' module.
     }
 
 
