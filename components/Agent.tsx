@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import {useState, useEffect} from 'react';
 import { vapi } from '@/lib/vapi.sdk';
 import { interviewer } from '@/constants';
+import { createFeedback } from '@/lib/actions/general.actions';
 // import { createFeedback } from '@/lib/actions/general.actions';
 
 
@@ -107,33 +108,53 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
         //that's why the api folder is there, to make server files and call db functions...
 
         //oh and you can see the exact error in the ss4, the last 4 lines told us which folders to look for the problem.
-        try{
-        const res = await fetch('/api/feedback', {//the real createFeedback is called by the server file. api/feedback/route.ts
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-        interviewId,
-        userId,
-        transcript: messages,
-        }),
-        })
-        const {success, feedbackId: id} = await res.json();
+    //     try{
+    //     const res = await fetch('/api/feedback', {//the real createFeedback is called by the server file. api/feedback/route.ts
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify({
+    //     interviewId,
+    //     userId,
+    //     transcript: messages,
+    //     }),
+    //     })
+    //     const {success, feedbackId: id} = await res.json();
 
 
-        if(success && id){//if success is true and id exists.   
+    //     if(success && id){//if success is true and id exists.   
+    //         router.push(`/interview/${interviewId}/feedback`)
+    //     } else {
+    //         //if it's not a success, we can log an error.
+    //         console.log("Error saving feedback")
+    //         router.push('/')//if there is an error then push them back to the home page.
+    //     }
+    // } catch(error){
+    //     console.error(error);
+    // }
+    //now our app is done, for almost every part, unless you ever wanna change the ui, so yeah... this is the last commit.
+
+    //OR WE CAN JUST SIMPLY USE THE "use server" directive in the general.actions.ts and it fixes shit as well.
+    //so now,
+    const {success, feedbackId: id} = await createFeedback({//renaming feedbackId to just id.
+        interviewId: interviewId!,
+        userId: userId!,
+        transcript: messages
+    })
+    if(success && id){//if success is true and id exists.   
             router.push(`/interview/${interviewId}/feedback`)
         } else {
             //if it's not a success, we can log an error.
             console.log("Error saving feedback")
             router.push('/')//if there is an error then push them back to the home page.
         }
-    } catch(error){
-        console.error(error);
-    }
-    //now our app is done, for almost every part, unless you ever wanna change the ui, so yeah... this is the last commit.
     
-
+        // using "use server" means "Hey, never even try to bundle this for the browser. This is server-only code."
+        // and we're using that in useEffect so i don't think that's a problem as the component isn't server rendered and if it were then i would have had to use formAction
     }
+
+
+
+
     //now we also have a useEffect for whenever anything changes.
     useEffect(() => {
         //HERE we will check whether we're on a call to generate an interview or we're on a call right now.

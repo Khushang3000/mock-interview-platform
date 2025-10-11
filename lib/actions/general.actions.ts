@@ -1,3 +1,4 @@
+"use server";
 import { feedbackSchema } from "@/constants";
 import { db } from "@/firebase/admin";
 import { google } from "@ai-sdk/google";
@@ -5,6 +6,7 @@ import { generateObject } from "ai";
 import { success } from "zod";
 
 export async function getInterviewsByUserId(userId: string): Promise<Interview[] | null>{//so basically this function will return a promise which will resolve into Interview[] array of interviews or null if nothing exists.
+    
     const interviews = await db.collection('interviews')
                             .where('userId','==',userId)
                             .orderBy('createdAt', 'desc')
