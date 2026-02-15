@@ -14,12 +14,12 @@ export async function GET(){
 export async function POST(request: Request){
     //since it's a post req, we have access to the post data.
 
-    const {type, role, level, techstack, amount, questions, userid} = await request.json();//the way we get data through reqest body in nextjs is by awaiting.
+    const {type, role, level, techstack, amount, userid} = await request.json();//the way we get data through reqest body in nextjs is by awaiting.
 
     try {
         //so how do we generate this ai text, that our vapi agent will use?
         //since we're using nextjs ai sdk, it's super simple.
-        const {text: questions} = await generateText({//renaming the text we're getting back from the ai to questions. now all these questions we got, we gotta store them in our database so that vapi can ask them to users.
+        const {text} = await generateText({
             model: google('gemini-2.0-flash-001'),
             prompt: `Prepare questions for a job interview.
         The job role is ${role}.
@@ -41,7 +41,7 @@ export async function POST(request: Request){
         const interview = {//we're going to store all this important info in the database, which vapi ai agent can use all this information.
             role, type, level,
             techstack: techstack.split(','),
-            questions: JSON.parse(questions),//cuz gemini returns them in the form of a string, and we want it to be an array.
+            questions: JSON.parse(text),//cuz gemini returns them in the form of a string, and we want it to be an array.
             userId: userid,
             finalized: true, //to indicate that we have finalized this interview.
             coverImage: getRandomInterviewCover(),//we could have asked the user to give the coverImage as well but just for the sake of keeping it simple, we're just getting the random interview cover.

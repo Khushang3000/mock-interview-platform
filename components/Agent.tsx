@@ -4,7 +4,7 @@ import Image from 'next/image'
 import React from 'react'
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useCallback} from 'react';
 import { vapi } from '@/lib/vapi.sdk';
 import { interviewer } from '@/constants';
 import { createFeedback } from '@/lib/actions/general.actions';
@@ -80,10 +80,25 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
 
     }, [])
     
-    const handleGenerateFeedback = async (messages: SavedMessage[]) => {//recieves a list of saved messages. cuz it has to take a transcript to generate feedback based on the entire conversation.
+    const handleGenerateFeedback = useCallback(async (messages: SavedMessage[]) => {
         console.log("Generate Feedback Here");
-
-        // TODO: generate a server action that generates a feedback.
+        try {
+            const {success, feedbackId: id} = await createFeedback({
+                interviewId: interviewId!,
+                userId: userId!,
+                transcript: messages
+            })
+            if(success && id){
+                router.push(`/interview/${interviewId}/feedback`)
+            } else {
+                console.log("Error saving feedback")
+                router.push('/')
+            }
+        } catch (error) {
+            console.error('Error generating feedback:', error);
+            router.push('/')
+        }
+    }, [interviewId, userId, router])
         // const {success, id} = {//we'll get the success and id from an action where we'll actually generate that feedback.
         //     //but for now we'll just take a dummy example.
         //     success: true,
@@ -135,26 +150,7 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
 
     //OR WE CAN JUST SIMPLY USE THE "use server" directive in the general.actions.ts and it fixes shit as well.
     //so now,
-    const {success, feedbackId: id} = await createFeedback({//renaming feedbackId to just id.
-        interviewId: interviewId!,
-        userId: userId!,
-        transcript: messages
-    })
-    if(success && id){//if success is true and id exists.   
-            router.push(`/interview/${interviewId}/feedback`)
-        } else {
-            //if it's not a success, we can log an error.
-            console.log("Error saving feedback")
-            router.push('/')//if there is an error then push them back to the home page.
-        }
-    
-        // using "use server" means "Hey, never even try to bundle this for the browser. This is server-only code.", if i don't use 'use server' in an action module and then call it from a client(browser component) then it get's bundled to the browser
-        // and we're using that in useEffect so i don't think that's a problem as the component isn't server rendered and if it were then i would have had to use formAction
-        // we could've made only the function server only by giving the first line in it's block/scope as 'use server';
-        //but since we're importing db from firebase/admin in the entire file, so the entire file needs to go server only... as it's a node-only module
-        //that's why our whole general.actions.ts goes as 'use server' module.
-        //also make sure that you add the workflow id as an environment variable in the prod env, while deploying.
-    }
+
 
 
 
@@ -181,7 +177,7 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
         //lib/actions/generalactions and there we'll create a server action that'll create feedback and store it in our firestore database using gemini
         //createFeedback function.
       
-    }, [messages, callStatus, type, userId])
+    }, [callStatus, type, messages, router, handleGenerateFeedback])
     //finally, we have to implement two functions
 
     //this will start the call so it'll be an async function.

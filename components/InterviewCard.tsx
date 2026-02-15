@@ -9,8 +9,19 @@ import DisplayTechIcons from './DisplayTechIcons';
 import { getFeedbackByInterviewId } from '@/lib/actions/general.actions';
 
 const InterviewCard = async ({id, userId, role, type, techstack, createdAt}:InterviewCardProps) => {
+    //Fetch feedback only if both id and userId exist
+    let feedback: Feedback | null = null;
+    if (id && userId) {
+        try {
+            feedback = await getFeedbackByInterviewId({
+                interviewId: id,
+                userId: userId,
+            });
+        } catch (error) {
+            console.error('Error fetching feedback:', error);
+        }
+    }
 
-    const feedback = null as Feedback| null ;// if the interview's id and user's id exist, then getfeedback by user's id, otherwise return null which will display "You haven't taken any interviews yet" line.
     const normalizedType = /mix/gi.test(type) ? 'Mixed' : type;//gi, g is global and i is case insensitive.
     const formattedDate = dayjs(feedback?.createdAt|| createdAt || Date.now()).format('MMM D, YYYY')//formatting is like sep/feb/oct date, 2005/2006/2007 or anything.
   return (

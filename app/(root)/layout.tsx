@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import React, { ReactNode } from 'react'
+import LogoutButton from '@/components/LogoutButton'
 
 const RootLayout = async ({children}:{children: ReactNode}) => {
   const isUserAuthenticated = await isAuthenticated();//this is how we can make our custom middlewares work in nextjs
@@ -15,12 +16,13 @@ const RootLayout = async ({children}:{children: ReactNode}) => {
   return (
     <div className='root-layout'>
       {/* making this container that renders the navbar and then renders children. */}
-      <nav>
+      <nav className='flex justify-between items-center'>
         {/* there will be a link tag that points to the home page. */}
         <Link href="/"  className='flex items-center gap-2'>
           <Image src="/logo.svg" alt="logo" width={38} height={32}/>
           <h2 className="text-primary-100">Properview</h2>
         </Link>
+        <LogoutButton />
       </nav>
       {/* now we render children */}
       {children}

@@ -1,9 +1,7 @@
 "use server";
 
 import { auth, db } from "@/firebase/admin";
-import { Auth } from "firebase-admin/auth";
 import { cookies } from "next/headers";
-import { success, ZodEmail } from "zod";
 
 //whenever we're in an action file we gotta use use server directive as actions will be executed on the server hence the server component.
 const One_Week= 60*60*24*7*1000;
@@ -35,10 +33,11 @@ export async function signUp (params: SignUpParams){
             message: "You have successfully created and Account, Please sign-in now."
         }
     
-    } catch (e: any) {
+    } catch (e) {
         console.error("Error creating the user", e)
 
-        if(e.code === 'auth/email-already-exists'){//firebase based error handling
+        const error = e as { code?: string };
+        if(error?.code === 'auth/email-already-exists'){//firebase based error handling
             return {
                 success: false,
                 message: "This email is already in use"
@@ -132,5 +131,10 @@ export async function isAuthenticated(){
     //so basically how !! works is, if we have an object {user: "Khushang"}, then ! makes it -> false and then another ! makes it true. and vice versa with an empty string.
     //'' (using !) -> true (using ! again) -> false
     //so now go to (root) 's layout and there add a check to see if a user is authenticated or not.
+}
+
+export async function logout() {
+    const cookieStore = await cookies();
+    cookieStore.delete('session');
 }
 

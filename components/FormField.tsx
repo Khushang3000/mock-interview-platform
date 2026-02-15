@@ -1,5 +1,5 @@
 import React from 'react'
-import { FormControl, FormLabel, FormDescription, FormMessage, FormItem } from './ui/form';
+import { FormControl, FormLabel, FormMessage, FormItem } from './ui/form';
 import { Input } from './ui/input';
 import { Controller, FieldValues, Path, Control } from 'react-hook-form';
 
@@ -15,7 +15,7 @@ interface FormFieldProps <T extends FieldValues> {// this interface accepts a T 
 
 }
 
-const FormField = ({control, name, label, placeholder, type="text"}: FormFieldProps<T>) => {//type= text by default., all of these will be of type FormFieldProps which accepts a generic T parameter.
+const FormField = <T extends FieldValues>({control, name, label, placeholder, type="text"}: FormFieldProps<T>) => {//type= text by default., all of these will be of type FormFieldProps which accepts a generic T parameter.
   //which is what allows us to make it reusable
   return (
     <div>

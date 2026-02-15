@@ -15,10 +15,10 @@ const page = async ({params}: RouteParams) => {
     const interview = await getInterviewById(id);//get the interview by id.
     if(!interview) redirect('/');//if there is no interview then redirect user to home page.
 
-    const feedback = await getFeedbackByInterviewId({//getting the userfeedback from gemini via getfeedbackbyinterviewid
+    const feedback = user?.id ? await getFeedbackByInterviewId({
         interviewId: id,
-        userId: user?.id!,
-    })
+        userId: user.id,
+    }) : null;
     //Now, the only thing that remains is completing the ui of this feedback page.
     //which we'll do in the next commit.
 

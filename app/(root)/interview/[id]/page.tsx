@@ -32,7 +32,11 @@ const page = async ({params}: RouteParams) => {
         </div>
         
         {/* now we'll also use the same agent that generated our interview to conduct our interview. we'll only need to change a few things in the agent component, like in the props it'll also accept the interview id. as well as the list of questions that we'll feed to this agent, now go to the 2nd useEffect of the agent.*/}
-        <Agent userName={user?.name || ''} userId={user?.id} interviewId={id} type='interview' questions={interview.questions}/>
+        {user ? (
+          <Agent userName={user.name} userId={user.id} interviewId={id} type='interview' questions={interview.questions}/>
+        ) : (
+          <div>Error: User not authenticated</div>
+        )}
     </>
   )
 }
