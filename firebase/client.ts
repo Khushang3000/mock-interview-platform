@@ -20,7 +20,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = !getApps.length? initializeApp(firebaseConfig): getApp();//checks made
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 // const analytics = getAnalytics(app);
 
 //exporting the auth as well as db. so our client side sdk is done now

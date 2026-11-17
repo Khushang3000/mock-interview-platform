@@ -8,6 +8,7 @@ import {useState, useEffect, useCallback} from 'react';
 import { vapi } from '@/lib/vapi.sdk';
 import { interviewer } from '@/constants';
 import { createFeedback } from '@/lib/actions/general.actions';
+import { toast } from 'sonner';
 // import { createFeedback } from '@/lib/actions/general.actions';
 
 
@@ -22,6 +23,19 @@ interface SavedMessage {
     //creating the savedMessage interface so that we can ensure typesafety in the messages array later when they'll be managed as a state.
     role: "user"|"system"|"assistant";
     content: string;
+}
+
+const getCallErrorMessage = (error: unknown, depth = 0): string => {
+    if(error instanceof Error) return error.message;
+    if(typeof error === 'string') return error;
+
+    if(typeof error === 'object' && error !== null && depth < 3){
+        if('message' in error && typeof error.message === 'string') return error.message;
+        if('error' in error) return getCallErrorMessage(error.error, depth + 1);
+        if('data' in error) return getCallErrorMessage(error.data, depth + 1);
+    }
+
+    return 'Unable to start the call. Check the Vapi configuration and try again.';
 }
 
 const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => {//added the userId and type that agent component is going to recieve. now we implement it's functionality.
@@ -54,7 +68,11 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
         const onSpeechStart = ()=>setIsSpeaking(true);
         const onSpeechEnd = ()=>setIsSpeaking(false);
     
-        const onError = (error: Error)=>console.log('Error: ',error);
+        const onError = (error: unknown)=>{
+            console.error('Vapi call error:', error);
+            setCallStatus(CallStatus.INACTIVE);
+            toast.error(getCallErrorMessage(error));
+        };
 
         //now we have all the functions that decide what happens at different stages of the call. we can now forward them over to vapi.
         //you can think of them as vapi event listeners.
@@ -182,50 +200,35 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
 
     //this will start the call so it'll be an async function.
     const handleCall = async ()=>{
+        if(callStatus === CallStatus.CONNECTING) return;
+
         setCallStatus(CallStatus.CONNECTING);
-        
-        // now we can call vapi and actually ask it to start the call.
 
-        //the reason we're passing undefined is because when you hover over the .start function you see:
-        // start(
-        //   assistant?: CreateAssistantDTO | string,
-        //   assistantOverrides?: AssistantOverrides,
-        //   squad?: CreateSquadDTO | string,
-        //   workflow?: CreateWorkflowDTO | string,
-        //   workflowOverrides?: WorkflowOverrides
-        // )
+        try {
+        if(type === 'generate' && !process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID){
+            throw new Error('The Vapi assistant ID is not configured.');
+        }
 
-        //which means that if you passed the public vapi workflow id as the 1st 2nd or 3rd argument, it will think of it as assistant, assistant override
-        //or squad, which we definitely don't want!!! and why did only passing undefined work? and why not ''(empty string) or null?
-        
-        // | What you passed | Type                                                    | SDK sees it as                                                    | Result  |
-        // | --------------- | ------------------------------------------------------- | ---------------------------------------------------------------   | ------- |
-        // | `undefined`     | *undefined*                                             | ❌ falsy → skip assistant → checks workflow ✅                   | works ✅ |
-        // | `null`          | object (but truthy in TS sense since explicitly passed) | “assistant exists but is null” ❌                                | fails   |
-        // | `''`            | string (empty)                                          | truthy string value (non-undefined) → treated as assistant ID ❌ | fails   |
+        if(!navigator.mediaDevices?.getUserMedia){
+            throw new Error('Microphone access is not available in this browser.');
+        }
 
-        // so basically when we passed null or '' it considered them as values for those parameters.
-        //that's how the vapi sdk was designed...
-        //oh and basically when you tried to make request before, by passing workflowid as the first variable.
-        //you had this logged in the browser, see the ss3.
-        //so you even got the context from there.
-        //which totally indicated that the start function was taking your key as the assistant id. as it came to be true.
+        const microphoneStream = await navigator.mediaDevices.getUserMedia({audio: true});
+        microphoneStream.getTracks().forEach((track)=>track.stop());
 
-        //now that was some real dev work now...
-        //now if you gave the interview, and you visited the firebase, you must've seen the interview being created.
-        // await vapi.start(undefined, undefined, undefined, process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID,{
-        //     variableValues: {//remember that we were using the userid variable in the workflow.
-        //         userid: userId,
-        //     }
-        // });
-        //so basically, we're telling it to start the convo with this specific agent or workflow.
-
-        if(type === 'generate'){//if type is equal to generate, we generate an interview.
-        await vapi.start(undefined, undefined, undefined, process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID,{
-            variableValues: {//remember that we were using the userid variable in the workflow.
-                userid: userId,
+        if(type === 'generate'){
+            const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
+            if(!assistantId){
+                throw new Error('The Vapi assistant ID is not configured.');
             }
-        });
+
+            const call = await vapi.start(assistantId,{
+                variableValues: {
+                    userid: userId,
+                    username: userName,
+                }
+            });
+            setCallStatus(call ? CallStatus.ACTIVE : CallStatus.INACTIVE);
         } else {
             //else means that type will be interview, hence this will be an interview call.
             //so we'll provide a n.o of questions for an interviewer to ask.
@@ -235,7 +238,7 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
 
             }
             //now our index.ts file under constants, uncomment all, as we're now ready to use it.
-            await vapi.start(interviewer, {//if you see the interviewer, he's a different interviewer than the one we used to generate the interview, this one will ask the questions.
+            const call = await vapi.start(interviewer, {//if you see the interviewer, he's a different interviewer than the one we used to generate the interview, this one will ask the questions.
                 //now go and look at the configuration of this interviewer in the documentation.
                 //also, if you want to generate a specific configuration, then you have to go to vapi, agent and publish the agent that you want to, and then click the </> code button and it'll give you the assistant's config in json.
                 //and you can just directly paste it or update your interviewer json with that one, but make sure to handle the inputs and variables.
@@ -243,7 +246,15 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
                     questions: formattedQuestions
                 }//oh and btw in this way we didn't need to host or publish our own assistant again.
             })
+            setCallStatus(call ? CallStatus.ACTIVE : CallStatus.INACTIVE);
             
+        }
+        } catch(error) {
+            console.error('Could not start Vapi call:', error);
+            setCallStatus(CallStatus.INACTIVE);
+            toast.error(error instanceof DOMException && error.name === 'NotAllowedError'
+                ? 'Microphone permission is required to start a call.'
+                : getCallErrorMessage(error));
         }
     }//so this is how simply we're handling the start of the call.
 
@@ -254,13 +265,10 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
     }//and that's how we handle disconnect.
     
     const latestMessage = messages[messages.length - 1]?.content; //check out how many messages there are and just give me it's content.
-    const isCallInactiveOrFinished = (callStatus === CallStatus.INACTIVE || CallStatus.FINISHED);
+    const isCallInactiveOrFinished = callStatus === CallStatus.INACTIVE || callStatus === CallStatus.FINISHED;
 
     //Okay, designing the interview is one thing, but giving the interview is what remains to be done, so let's do that in the next commit.
-    //oh and btw you might've noticed that we're using the public key for web workflow as we're doing shit on client side, 
-    //as private keys are used to interact with vapi api in the backend of the systems,
-    //and the public key is used to interact with vapi api in the client side, that's why we even named our workflow id with NEXT_PUBLIC so that it can be accessed on the frontend side.
-    //so now the next thing w gotta do is -> showing the generated interview. to show the newly generated interview on the homepage, we gotta make an action that fetches that interview.
+    //The public API key is used by this browser-side Vapi client.
     //so in lib/auth.actions.ts we can write a simple function that simply fetches the interview 
 // ################################################################FINAL PART OF THIS PAGE HAS ENDED##################################################################
 
@@ -291,7 +299,7 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
     <div className="w-full flex justify-center">
         {/**Here we have to deal with call status, every call has a status that we have to define. */}
         {callStatus !== 'ACTIVE' ? //IF STATUS IS NOT ACTIVE
-        (<button className='relative btn-call' onClick={handleCall}>
+        (<button className='relative btn-call' onClick={handleCall} disabled={callStatus === CallStatus.CONNECTING}>
             {/* this button will allow us to commence the call */}
             <span className={cn(`absolute rounded-full opacity-75`, callStatus !== 'CONNECTING' && 'hidden')}/>
                 {/* in the cn function, if the callStatus is not Connecting only then we'll give it a className 'hidden' */}
@@ -319,9 +327,7 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
     
     // Assistants are the new standard: The Assistant builder is the primary, recommended way to create voice agents on Vapi for almost all new projects. It's designed to be a single, powerful, conversational agent.
 
-    // Workflows are a legacy/specialized feature: The Workflow builder is an older system designed for creating very rigid, multi-step, deterministic call flows (like a visual phone tree). Vapi's own documentation now states: "We no longer recommend Workflows for new builds. Use Assistants for most cases..."
-        
-    //go to docs and read the assistants section as well as the workflows section and see the quickstart sections there.
+    //The interview generation assistant is configured in the Vapi dashboard.
     //but firstly let's get the vapi api in our app for interacting with the real time call functionality of vapi:npm i @vapi-ai/web
     //now head over to vapi dashboard->api keys->public api key. and add the env variable.
 

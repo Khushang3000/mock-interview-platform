@@ -117,7 +117,11 @@ const AuthForm = ({type}:{type: string}) => {//the rendering will be based on wh
           }
 
           //if the token was created then we pass it to the signIn function which will make a session cookie out of it.
-          await signIn({email, idToken});
+          const result = await signIn({email, idToken});
+          if(!result?.success){
+            toast.error(result?.message ?? "Failed to log into an account");
+            return;
+          }
           //below part is for success, now we could have done all the work on the Client side, but it is less secure, see how we were using client side sdk(auth) in this authform
           //and admin side sdk in server actions
           //we can also perform server side checks like checking for roles or permissions.

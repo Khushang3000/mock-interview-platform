@@ -66,10 +66,31 @@ export async function signIn (params: SignInParams){
             }
         }
 
+        const decodedToken = await auth.verifyIdToken(idToken);
+        if(decodedToken.uid !== userRecord.uid){
+            return {
+                success: false,
+                message: "The sign-in token does not match this account"
+            }
+        }
+
+        const userDocument = db.collection('users').doc(userRecord.uid);
+        const userSnapshot = await userDocument.get();
+        if(!userSnapshot.exists){
+            await userDocument.set({
+                name: userRecord.displayName ?? email.split("@")[0],
+                email: userRecord.email ?? email
+            })
+        }
+
         //if user does exist then create a cookie based session for him
         await setSessionCookie(idToken);//see this function that we made below this signIn function, and then get into the else part of the authForm onSubmit.
+        return {
+            success: true,
+            message: "Logged in successfully."
+        }
     } catch (error) {
-        console.log(error);
+        console.error("Error signing in user", error);
         return {
             success: false,
             message: "Failed to log into an account"
@@ -87,7 +108,7 @@ export async function setSessionCookie(idToken: string){
     })
 
     cookieStore.set('session', sessionCookie, {//storing sessionCookie in user's browser.
-        maxAge: One_Week,
+        maxAge: One_Week / 1000,
         httpOnly: true,//we typically do that with authentication cookies
         secure: process.env.NODE_ENV === 'production',
         path: "/",

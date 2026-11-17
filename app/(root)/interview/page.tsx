@@ -10,7 +10,7 @@ const page = async () => {
     return <div>Error: User not authenticated</div>;
   }
 
-  //Now in this commit we'll finally connect our workflow to the application...
+  //The Vapi assistant gathers details and requests interview generation.
   //this agent is a shared component btw, we'll use it lateron when we take the interview. but rn it's job is only to take the information from the user and generate the interview.
   //see agent.tsx..
   return (

@@ -20,7 +20,7 @@ export async function POST(request: Request){
         //so how do we generate this ai text, that our vapi agent will use?
         //since we're using nextjs ai sdk, it's super simple.
         const {text} = await generateText({
-            model: google('gemini-2.0-flash-001'),
+            model: google('gemini-3.6-flash'),
             prompt: `Prepare questions for a job interview.
         The job role is ${role}.
         The job experience level is ${level}.
@@ -56,20 +56,13 @@ export async function POST(request: Request){
         //now if you go back to your firebase database and reload, you'll see that there's a new document interviews, now if you go in it,
         //it will have an interview with 7 questions that gemini created for us, based on all the information we provided in prompt of generateText. 
 
-        //now the next thing we have to do is deploy our application, only to be able to share this api endpoint that we have created with the vapi workflow.
-        //and then that workflow will call the deployed url, which will then generate this interview for us.
-        //we can also do this locally by using ngrok but it's a complex setup and deploying this and testing it out live is a simpler way.
+        //The assistant's API Request tool must call this route using a publicly reachable HTTPS URL.
+        //Use a deployment or HTTPS tunnel when testing locally; Vapi cannot reach localhost directly.
         //oh and btw before deploying this on vercel, we must ignore any eslint warnings or typescript errors that might pose a problem in deployment.
         //for that go to next.config.ts and under config options:
         //eslint: {ignoreDuringBuilds: true},
         //typescript: {ignoreBuildErrors: true}
 
-        //now we'll be working on the most important functionality of this project.
-        //setting up our ai agent workflow. and we'll be using workflow method btw. and instead of the gather node, we'll use the first conversational node and in that we're gonna extract the variables.
-        //once you've made the workflow, you can copy that workflow, head over to the env and add that.
-        //now go to root/interview page, where we wanna pass the user information to the Agent.
-        //and while making the api request through api node, send values like normal, role, type..., and to put their values, use {{role}}, {{type}}, which the variables which were extracted by the startNode.
-        //you can see the entire workflow in the screenshot 2.
         
     } catch (error) {
         console.error(error);

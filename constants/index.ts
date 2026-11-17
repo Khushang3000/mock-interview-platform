@@ -112,7 +112,7 @@ export const interviewer: CreateAssistantDTO = {
   },
   model: {
     provider: "google",
-    model: "gemini-2.0-flash",
+    model: "gemini-3.8-flash",
     messages: [
       {
         role: "system",
