@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import {useState, useEffect, useCallback} from 'react';
 import { vapi } from '@/lib/vapi.sdk';
+import { isMicrophoneAudioDetected } from '@/lib/voice-audio';
 import { interviewer } from '@/constants';
 import { createFeedback } from '@/lib/actions/general.actions';
 import { toast } from 'sonner';
@@ -44,6 +45,8 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
     //so let's make them, instead of using the static variables.
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE)
+    const [localAudioLevel, setLocalAudioLevel] = useState(0);
+    const [liveTranscript, setLiveTranscript] = useState('');
 
     //also let's make a list for messages as we won't be having static messages.
     const [messages, setMessages] = useState<SavedMessage[]>([]);
@@ -54,19 +57,19 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
         const onCallEnd = ()=>setCallStatus(CallStatus.INACTIVE)//as soon as the call ends we set callstatus to inactive.
 
         const onMessage = (message: Message)=>{
-            if(message.type === "transcript" && message.transcriptType === "final"){
-                //if message type and transcript type is final that means that we can save it somewhere.
-                const newMessage = {role: message.role, content: message.transcript}
+            if(message.type !== "transcript") return;
 
-                //adding that message to the array of messages.
-                setMessages((prev)=>[...prev, newMessage]);
-
-
+            if(message.transcriptType === "partial"){
+                setLiveTranscript(message.transcript);
+            } else if(message.transcriptType === "final"){
+                setLiveTranscript('');
+                setMessages((prev)=>[...prev, {role: message.role, content: message.transcript}]);
             }
         };//so that's what happens onMessage.
 
         const onSpeechStart = ()=>setIsSpeaking(true);
         const onSpeechEnd = ()=>setIsSpeaking(false);
+        const onLocalVolumeLevel = (level: number)=>setLocalAudioLevel(level);
     
         const onError = (error: unknown)=>{
             console.error('Vapi call error:', error);
@@ -82,6 +85,7 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
         vapi.on('message', onMessage);
         vapi.on('speech-start', onSpeechStart);
         vapi.on('speech-end', onSpeechEnd);
+        vapi.on('local-volume-level', onLocalVolumeLevel);
         vapi.on('error', onError);
         //these all are just events from vapi that we blend our app with.
         //but there's one thing, whenever you open up listeners in useEffect, you also have to clear them.
@@ -93,6 +97,7 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
         vapi.off('message', onMessage);
         vapi.off('speech-start', onSpeechStart);
         vapi.off('speech-end', onSpeechEnd);
+        vapi.off('local-volume-level', onLocalVolumeLevel);
         vapi.off('error', onError);
         }
 
@@ -209,13 +214,6 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
             throw new Error('The Vapi assistant ID is not configured.');
         }
 
-        if(!navigator.mediaDevices?.getUserMedia){
-            throw new Error('Microphone access is not available in this browser.');
-        }
-
-        const microphoneStream = await navigator.mediaDevices.getUserMedia({audio: true});
-        microphoneStream.getTracks().forEach((track)=>track.stop());
-
         if(type === 'generate'){
             const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
             if(!assistantId){
@@ -289,10 +287,17 @@ const Agent = ({userName, userId, type, interviewId, questions}: AgentProps) => 
             </div>
         </div>
     </div>
-    {messages.length>0 && (
+    {callStatus === CallStatus.ACTIVE && (
+        <p className="text-center text-sm text-muted-foreground" aria-live="polite">
+            {isMicrophoneAudioDetected(localAudioLevel)
+                ? 'Microphone is picking up sound.'
+                : 'No microphone sound detected. Check the selected microphone and speak after the interviewer finishes.'}
+        </p>
+    )}
+    {(messages.length>0 || liveTranscript) && (
         <div className="transcript-border">
             <div className="transcript">
-                <p key={latestMessage} className={cn('transition-opacity duration-500 opacity-0','animate-fadeIn opacity-100')}>{latestMessage}</p>
+                <p key={liveTranscript || latestMessage} className={cn('transition-opacity duration-500 opacity-0','animate-fadeIn opacity-100')}>{liveTranscript || latestMessage}</p>
             </div>
         </div>
     )}
