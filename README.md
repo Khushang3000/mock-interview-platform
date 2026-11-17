@@ -32,6 +32,10 @@ Create the generation assistant in the same Vapi account as the public API key. 
 The separate interview-taking assistant is configured inline in `constants/index.ts`; do not create a second permanent Vapi assistant for it. It runs as a transient assistant, so allow transient assistants on the public API key.
 The interview-taking assistant uses Vapi-managed transcription; no separate Deepgram API key is required.
 
+## Phone verification for sign-up
+
+Sign-up requires verifying a phone number by SMS before the name, email, and password fields are enabled. Firebase Authentication must have the **Phone** provider enabled, and both `localhost` and the deployed site must be listed under **Authentication → Settings → Authorized domains**. Configure allowed SMS regions in Firebase, and use Firebase's fictional phone numbers/codes for development tests to avoid sending paid SMS.
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More

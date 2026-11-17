@@ -8,10 +8,26 @@ const One_Week= 60*60*24*7*1000;
 
 
 export async function signUp (params: SignUpParams){
-    const {uid, name, email} = params;
+    const {uid, name, email, phoneNumber, idToken} = params;
 
 
     try {//here we will try to sign our user up.
+        const decodedToken = await auth.verifyIdToken(idToken);
+        if(decodedToken.uid !== uid){
+            return {
+                success: false,
+                message: "Your phone verification session is invalid. Verify your number again."
+            }
+        }
+
+        const authUser = await auth.getUser(uid);
+        if(authUser.phoneNumber !== phoneNumber || authUser.email?.toLowerCase() !== email.toLowerCase()){
+            return {
+                success: false,
+                message: "Verify your phone number and use the same email address to create an account."
+            }
+        }
+
         const userRecord = await db.collection('users').doc(uid).get();//getting a document with a specific uid
 
         if(userRecord.exists){//CHECKING IF USER ALREADY EXISTS IN THE DB
@@ -24,8 +40,9 @@ export async function signUp (params: SignUpParams){
         await db.collection('users').doc(uid).set({//PASSWORD WILL GO TO FIREBASE AUTH NOT FIREBASE DATABASE.
             // name: name,
             // email: email
-            name, 
-            email
+            name,
+            email,
+            phoneNumber: authUser.phoneNumber
         })//if the record doesn't exist then create it with that uid, now you can see the onSubmit function'S FIRST IF STATEMENT in Authform 
         
         return {
@@ -77,9 +94,17 @@ export async function signIn (params: SignInParams){
         const userDocument = db.collection('users').doc(userRecord.uid);
         const userSnapshot = await userDocument.get();
         if(!userSnapshot.exists){
+            if(!userRecord.phoneNumber){
+                return {
+                    success: false,
+                    message: "Phone verification is required to create an account."
+                }
+            }
+
             await userDocument.set({
                 name: userRecord.displayName ?? email.split("@")[0],
-                email: userRecord.email ?? email
+                email: userRecord.email ?? email,
+                phoneNumber: userRecord.phoneNumber
             })
         }
 

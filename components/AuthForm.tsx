@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import FormField from './FormField';
 
 
@@ -14,7 +14,7 @@ import { z } from "zod"
 // })
 //above code was pasted from shadcn doc
 // our schema
-const authFormSchema = (type: string)=>{
+const authFormSchema = (type: "sign-in" | "sign-up")=>{
     return z.object({
         name: type === "sign-up"? z.string().min(3) : z.string().optional(),
         //name will only be required in the signup page.
@@ -40,8 +40,19 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';//make sure this is the one from next/navigation not next/router
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import {
+  EmailAuthProvider,
+  RecaptchaVerifier,
+  linkWithCredential,
+  reauthenticateWithCredential,
+  signInWithEmailAndPassword,
+  signInWithPhoneNumber,
+  signOut,
+  updateProfile,
+  type ConfirmationResult,
+} from 'firebase/auth';
 import { auth } from '@/firebase/client';
+import { Input } from '@/components/ui/input';
 
 import { signIn, signUp } from '@/lib/actions/auth.action';
 
@@ -59,7 +70,31 @@ import { signIn, signUp } from '@/lib/actions/auth.action';
 //after that we gotta build the form that comprises of all the shadcn components that we imported.
 
 
-const AuthForm = ({type}:{type: string}) => {//the rendering will be based on whether the type that was sent was sign-in or sign-up
+const getPhoneAuthErrorMessage = (error: unknown) => {
+    const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : '';
+
+    switch(code){
+        case 'auth/invalid-phone-number':
+            return 'Enter a valid phone number in international format, such as +14155552671.';
+        case 'auth/invalid-verification-code':
+            return 'That verification code is incorrect. Check it and try again.';
+        case 'auth/code-expired':
+            return 'That verification code expired. Request a new code.';
+        case 'auth/too-many-requests':
+            return 'Too many attempts. Wait a while before trying again.';
+        case 'auth/operation-not-allowed':
+            return 'Phone sign-in is not enabled for this Firebase project.';
+        case 'auth/email-already-in-use':
+        case 'auth/credential-already-in-use':
+            return 'That email or phone number is already linked to another account.';
+        default:
+            return error instanceof Error ? error.message : 'Phone verification failed. Please try again.';
+    }
+};
+
+const AuthForm = ({type}:{type: "sign-in" | "sign-up"}) => {//the rendering will be based on whether the type that was sent was sign-in or sign-up
 
 
     const router = useRouter()//this is the one from next/navigation not next/router
@@ -75,6 +110,86 @@ const AuthForm = ({type}:{type: string}) => {//the rendering will be based on wh
       password: ""
     },
   })
+
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+
+  useEffect(() => () => {
+    recaptchaVerifierRef.current?.clear();
+  }, []);
+
+  async function sendPhoneVerificationCode() {
+    const normalizedPhoneNumber = phoneNumber.replace(/[\s()-]/g, '');
+    if(!/^\+[1-9]\d{7,14}$/.test(normalizedPhoneNumber)){
+      toast.error('Enter your phone number with country code, for example +14155552671.');
+      return;
+    }
+
+    setIsSendingCode(true);
+    try {
+      if(!recaptchaVerifierRef.current){
+        const container = recaptchaContainerRef.current;
+        if(!container) throw new Error('Phone verification is not ready. Refresh the page and try again.');
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, container, {size: 'invisible'});
+      }
+
+      const result = await signInWithPhoneNumber(auth, normalizedPhoneNumber, recaptchaVerifierRef.current);
+      setPhoneNumber(normalizedPhoneNumber);
+      setConfirmationResult(result);
+      toast.success('Verification code sent by SMS.');
+    } catch(error) {
+      console.error('Could not send phone verification code:', error);
+      recaptchaVerifierRef.current?.clear();
+      recaptchaVerifierRef.current = null;
+      toast.error(getPhoneAuthErrorMessage(error));
+    } finally {
+      setIsSendingCode(false);
+    }
+  }
+
+  async function verifyPhoneNumber() {
+    if(!confirmationResult) return;
+    if(!/^\d{6}$/.test(verificationCode.trim())){
+      toast.error('Enter the 6-digit code sent to your phone.');
+      return;
+    }
+
+    setIsVerifyingCode(true);
+    try {
+      const {user} = await confirmationResult.confirm(verificationCode.trim());
+      if(!user.phoneNumber) throw new Error('Firebase did not return a verified phone number.');
+
+      setPhoneNumber(user.phoneNumber);
+      setIsPhoneVerified(true);
+      setVerificationCode('');
+      recaptchaVerifierRef.current?.clear();
+      recaptchaVerifierRef.current = null;
+      toast.success('Phone number verified. You can now complete sign-up.');
+    } catch(error) {
+      console.error('Could not verify phone number:', error);
+      toast.error(getPhoneAuthErrorMessage(error));
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  }
+
+  async function changePhoneNumber() {
+    try {
+      if(isPhoneVerified) await signOut(auth);
+      setIsPhoneVerified(false);
+      setConfirmationResult(null);
+      setVerificationCode('');
+    } catch(error) {
+      console.error('Could not reset phone verification:', error);
+      toast.error(getPhoneAuthErrorMessage(error));
+    }
+  }
  
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -82,24 +197,47 @@ const AuthForm = ({type}:{type: string}) => {//the rendering will be based on wh
     //the thing that we want to do. a db call like signing the user and logging in the user.
     try {
         if(type === 'sign-up'){
+            const {name, email, password} = values;
+            if(!isPhoneVerified){
+              toast.error('Verify your phone number before creating an account.');
+              return;
+            }
 
-            const {name, email, password} = values;//DESTRUCTURING VALUES FROM FORM.
-            const userCredentials = await createUserWithEmailAndPassword(auth, email, password)//This registers a user in firebase AUTHENTICATION, NOT FIREBASE DATABASE, this function is provided with firebase/client
-            
+            const phoneUser = auth.currentUser;
+            const verifiedPhoneNumber = phoneUser?.phoneNumber;
+            if(!phoneUser || !verifiedPhoneNumber || verifiedPhoneNumber !== phoneNumber){
+              toast.error('Phone verification expired. Verify your phone number again.');
+              setIsPhoneVerified(false);
+              return;
+            }
+
+            let accountUser = phoneUser;
+            const emailCredential = EmailAuthProvider.credential(email, password);
+            if(accountUser.email){
+              if(accountUser.email.toLowerCase() !== email.toLowerCase()){
+                toast.error('This verified phone number is already linked to a different email.');
+                return;
+              }
+              await reauthenticateWithCredential(accountUser, emailCredential);
+            } else {
+              accountUser = (await linkWithCredential(accountUser, emailCredential)).user;
+            }
+
+            await updateProfile(accountUser, {displayName: name ?? ''});
             const result = await signUp({
-              uid: userCredentials.user.uid,
-              name: name!,//to make typescript shut up
-              email: email,
-              password: password
+              uid: accountUser.uid,
+              name: name ?? '',
+              email,
+              phoneNumber: verifiedPhoneNumber,
+              idToken: await accountUser.getIdToken(true),
             })
             
             if(!result?.success){
               toast.error(result?.message)
               return 
             }
-            
-            
-            
+
+            await signOut(auth);
             toast.success("Account created successfully please sign-in")
             router.push("/sign-in")//after they've registered successfully we'll redirect user to firebase's sign-in so that they can now sign-in.
             //this method will now generate a token which we'll send to the server side and set a cookie.
@@ -180,13 +318,81 @@ const AuthForm = ({type}:{type: string}) => {//the rendering will be based on wh
         <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-6 mt-4 form">
         {/* we were using a formfield component but it took a lot of space so we just turned it into a reusable component. we also modified it so see it there */}
-            {/* if this is not the signin page only then render the name. */}
-            {!isSignin && (<FormField control={form.control} name="name" label="Name" placeholder='Your Name' type="text"/>)}{/**instead of statically rendering the name we're rendering formfield that we created. */}
-            <FormField control={form.control} name="email" label="Email" placeholder='Your Email' type="email"/>
-            <FormField control={form.control} name="password" label="Password" placeholder='Your Password' type="password"/> {/**now if you tried to put type as anything other thatn name, password text, file, it'd give an error see the interface we made. */}
+        {!isSignin && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="phone-number" className="text-sm font-medium">Phone number</label>
+              <Input
+                id="phone-number"
+                type="tel"
+                autoComplete="tel"
+                placeholder="+14155552671"
+                value={phoneNumber}
+                onChange={(event) => setPhoneNumber(event.target.value)}
+                disabled={isPhoneVerified || isSendingCode || isVerifyingCode}
+              />
+              <p className="text-sm text-muted-foreground">Include your country code in international format.</p>
+            </div>
 
+            {!confirmationResult && !isPhoneVerified && (
+              <Button type="button" onClick={sendPhoneVerificationCode} disabled={isSendingCode}>
+                {isSendingCode ? 'Sending code...' : 'Send verification code'}
+              </Button>
+            )}
 
-        <Button type="submit">{ isSignin? "Sign-in": "Create an Account"}</Button>
+            {confirmationResult && !isPhoneVerified && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label htmlFor="verification-code" className="text-sm font-medium">SMS verification code</label>
+                  <Input
+                    id="verification-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="6-digit code"
+                    value={verificationCode}
+                    onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    disabled={isVerifyingCode}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button type="button" onClick={verifyPhoneNumber} disabled={isVerifyingCode}>
+                    {isVerifyingCode ? 'Verifying...' : 'Verify phone'}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={changePhoneNumber} disabled={isVerifyingCode}>
+                    Change number
+                  </Button>
+                  <Button type="button" variant="outline" onClick={sendPhoneVerificationCode} disabled={isSendingCode}>
+                    {isSendingCode ? 'Sending...' : 'Resend code'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {isPhoneVerified && (
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-sm text-green-600">Phone number verified.</p>
+                <Button type="button" variant="outline" onClick={changePhoneNumber}>
+                  Change number
+                </Button>
+              </div>
+            )}
+            <div ref={recaptchaContainerRef} />
+          </div>
+        )}
+
+        <fieldset
+          disabled={!isSignin && !isPhoneVerified}
+          className={`space-y-6 ${!isSignin && !isPhoneVerified ? 'opacity-50' : ''}`}
+        >
+          {!isSignin && (<FormField control={form.control} name="name" label="Name" placeholder='Your Name' type="text"/>)}
+          <FormField control={form.control} name="email" label="Email" placeholder='Your Email' type="email"/>
+          <FormField control={form.control} name="password" label="Password" placeholder='Your Password' type="password"/>
+          <Button type="submit" disabled={!isSignin && !isPhoneVerified}>
+            {isSignin ? "Sign-in" : "Create an Account"}
+          </Button>
+        </fieldset>
       </form>
     </Form>
     {/* this p tag below allows us to switch between the two pages */}

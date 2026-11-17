@@ -81,7 +81,8 @@ interface SignUpParams {
   uid: string;
   name: string;
   email: string;
-  password: string;
+  phoneNumber: string;
+  idToken: string;
 }
 
 type FormType = "sign-in" | "sign-up";
